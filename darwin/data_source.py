@@ -7,6 +7,7 @@ spending API credits. Synthetic data is seeded per-symbol => reproducible.
 from __future__ import annotations
 
 import hashlib
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -58,16 +59,34 @@ def synthetic_ohlcv(symbol: str, n: int = 365, timeframe: str = "1d") -> pd.Data
     )
 
 
+# Which source served each symbol on the last load_market_data() call
+# (surfaced in reports / the dashboard so the data's origin is visible).
+LAST_PROVENANCE: dict[str, str] = {}
+
+SOURCES = ("auto", "cmc_ohlcv", "cmc_quotes", "binance", "synthetic")
+
+
 def load_market_data(
     symbols: list[str],
     count: int = 365,
     timeframe: str = "1d",
     force_synthetic: bool = False,
+    source: str = "auto",
 ) -> dict[str, pd.DataFrame]:
-    """Return {symbol -> OHLCV DataFrame}. Source preference:
-    CoinMarketCap OHLCV (paid tier) -> Binance public klines -> deterministic synthetic.
+    """Return {symbol -> OHLCV DataFrame}.
+
+    `source="auto"` preference order:
+      1. CMC /v2/cryptocurrency/ohlcv/historical   (true OHLCV; not on the Startup tier)
+      2. CMC /v2/cryptocurrency/quotes/historical  (daily candles; Startup tier, 12 months)
+      3. Binance public klines                     (non-CMC fallback)
+      4. deterministic synthetic                   (offline / tests)
+    Pin a specific `source` (e.g. "cmc_quotes") to force fresh CMC-only data.
     """
-    if force_synthetic:
+    if source not in SOURCES:
+        raise ValueError(f"source must be one of {SOURCES}")
+    LAST_PROVENANCE.clear()
+    if force_synthetic or source == "synthetic":
+        LAST_PROVENANCE.update({s: "synthetic" for s in symbols})
         return {s: synthetic_ohlcv(s, count, timeframe) for s in symbols}
 
     from .binance import binance_klines
@@ -80,33 +99,59 @@ def load_market_data(
             cmc = None
     time_period, interval = _TIMEFRAME_TO_CMC.get(timeframe, ("daily", "daily"))
 
+    def try_cmc_ohlcv(s):
+        return cmc.ohlcv_historical(s, count=count, time_period=time_period, interval=interval)
+
+    def try_cmc_quotes(s):
+        if timeframe != "1d":
+            return None  # Startup tier: intraday quote history is capped at 1 month
+        return cmc.quotes_historical_daily(s, days=min(count, 364))
+
+    def try_binance(s):
+        return binance_klines(s, count=count, timeframe=timeframe)
+
+    chain = {
+        "auto": [("cmc_ohlcv", try_cmc_ohlcv), ("cmc_quotes", try_cmc_quotes), ("binance", try_binance)],
+        "cmc_ohlcv": [("cmc_ohlcv", try_cmc_ohlcv)],
+        "cmc_quotes": [("cmc_quotes", try_cmc_quotes)],
+        "binance": [("binance", try_binance)],
+    }[source]
+
     out: dict[str, pd.DataFrame] = {}
     for s in symbols:
-        df = None
-        if cmc is not None:
+        df, used = None, "synthetic"
+        for name, fn in chain:
+            if name.startswith("cmc") and cmc is None:
+                continue
             try:
-                got = cmc.ohlcv_historical(s, count=count, time_period=time_period, interval=interval)
-                df = got if not got.empty else None
-            except CMCError:
-                df = None
-        if df is None:
-            try:
-                got = binance_klines(s, count=count, timeframe=timeframe)
-                df = got if not got.empty else None
+                got = fn(s)
             except Exception:
-                df = None
+                got = None
+            if got is not None and not got.empty:
+                df, used = got, name
+                break
         out[s] = df if df is not None else synthetic_ohlcv(s, count, timeframe)
+        LAST_PROVENANCE[s] = used
     return out
 
 
 def load_fear_greed() -> pd.DataFrame | None:
-    """CMC's proprietary 0-100 sentiment index as a time series, or None."""
+    """CMC's proprietary 0-100 sentiment index as a time series, or None.
+
+    The endpoint caps `limit` at 500 (it previously asked for 1000, got a 400, and
+    silently fell back to synthetic data). Failures are now logged, not swallowed.
+    """
     if not settings.has_cmc:
         return None
     try:
-        return CMCClient().fear_greed_historical(limit=1000)
-    except CMCError:
+        return CMCClient().fear_greed_historical(limit=500)
+    except CMCError as e:
+        warnings.warn(f"CMC Fear & Greed unavailable, using synthetic fallback: {e}")
         return None
+
+
+# Origin of each market signal on the last load_signals() call ("cmc" / "synthetic").
+SIGNAL_PROVENANCE: dict[str, str] = {}
 
 
 def synthetic_fgi(n: int = 500, timeframe: str = "1d") -> pd.Series:
@@ -145,12 +190,77 @@ def derive_market_signals(data: dict[str, pd.DataFrame]) -> dict[str, pd.Series]
     return {"mom": mom.rename("mom").fillna(0.0), "breadth": breadth.rename("breadth").fillna(50.0)}
 
 
+def load_cmc_regime_signals() -> dict[str, pd.Series]:
+    """NEW (Round 2): cross-market regime signals from CMC global metrics + RWA.
+
+    - `btc_dom`   : BTC dominance, % of total crypto market cap
+                    (/v1/global-metrics/quotes/historical).
+    - `dom_trend` : 30-day change in BTC dominance, percentage points. Rising =
+                    capital hiding in BTC (alt risk-off); falling = alt rotation.
+    - `gold_rs`   : crypto-vs-gold relative strength: 30-day % return of total
+                    crypto market cap minus 30-day % return of tokenized gold
+                    (/v5/real-world-assets/quotes/historical, symbol=GOLD).
+                    Positive = crypto outperforming the classic safe haven (risk-on).
+
+    Series are stamped 00:00 UTC and aligned to bars as-of (no look-ahead).
+    Startup tier: last 12 months only, so earlier bars see NaN (= condition False).
+    """
+    if not settings.has_cmc:
+        return {}
+    try:
+        cmc = CMCClient()
+    except CMCError:
+        return {}
+    out: dict[str, pd.Series] = {}
+    gm = pd.DataFrame()
+    try:
+        gm = cmc.global_metrics_historical()
+        if not gm.empty:
+            dom = gm["btc_dominance"].astype(float)
+            out["btc_dom"] = dom.rename("btc_dom")
+            out["dom_trend"] = dom.diff(30).rename("dom_trend")
+    except CMCError:
+        pass
+    try:
+        gold = cmc.rwa_quotes_historical("GOLD")
+        if not gold.empty and not gm.empty:
+            crypto_ret = gm["total_market_cap"].astype(float).pct_change(30) * 100.0
+            gold_ret = gold["price"].astype(float).pct_change(30) * 100.0
+            rs = (crypto_ret - gold_ret.reindex(crypto_ret.index, method="ffill")).dropna()
+            out["gold_rs"] = rs.rename("gold_rs")
+    except CMCError:
+        pass
+    return out
+
+
+def synthetic_regime_signals(n: int = 500, timeframe: str = "1d") -> dict[str, pd.Series]:
+    """Deterministic stand-ins so offline demos/tests exercise every signal."""
+    rng = np.random.default_rng(7)
+    freq = {"1d": "D", "1h": "h", "1w": "W"}.get(timeframe, "D")
+    idx = pd.date_range(end=pd.Timestamp.utcnow().normalize(), periods=n, freq=freq)
+    dom = pd.Series(55 + np.cumsum(rng.normal(0, 0.25, n)).clip(-8, 8), index=idx)
+    rs = pd.Series(np.cumsum(rng.normal(0, 2.0, n)).clip(-40, 40), index=idx)
+    return {"btc_dom": dom, "dom_trend": dom.diff(30).fillna(0.0), "gold_rs": rs}
+
+
 def load_signals(count: int = 500, timeframe: str = "1d", force_synthetic: bool = False) -> dict[str, pd.Series]:
-    """Market-wide signals usable by strategy conditions. Always returns an `fgi`
-    series (real CMC Fear & Greed when available, synthetic otherwise)."""
+    """Market-wide signals usable by strategy conditions: `fgi` (CMC Fear & Greed)
+    plus the Round 2 CMC regime signals (`btc_dom`, `dom_trend`, `gold_rs`).
+    Falls back to deterministic synthetic series offline."""
+    SIGNAL_PROVENANCE.clear()
     if force_synthetic or not settings.has_cmc:
-        return {"fgi": synthetic_fgi(count, timeframe)}
+        out = {"fgi": synthetic_fgi(count, timeframe), **synthetic_regime_signals(count, timeframe)}
+        SIGNAL_PROVENANCE.update({k: "synthetic" for k in out})
+        return out
+    out: dict[str, pd.Series] = {}
     fg = load_fear_greed()
     if fg is not None and "value" in fg.columns and not fg.empty:
-        return {"fgi": fg["value"].astype(float)}
-    return {"fgi": synthetic_fgi(count, timeframe)}
+        out["fgi"] = fg["value"].astype(float)
+        SIGNAL_PROVENANCE["fgi"] = "cmc"
+    else:
+        out["fgi"] = synthetic_fgi(count, timeframe)
+        SIGNAL_PROVENANCE["fgi"] = "synthetic"
+    regime = load_cmc_regime_signals()
+    out.update(regime)
+    SIGNAL_PROVENANCE.update({k: "cmc" for k in regime})
+    return out
