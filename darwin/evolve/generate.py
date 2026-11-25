@@ -95,14 +95,29 @@ class StrategyGenerator:
 
     # ---- low-level call ----------------------------------------------------
 
-    def _call(self, user: str, max_tokens: int = 4096, temperature: float = 1.0) -> str:
-        msg = self._client.messages.create(
+    def _call(self, user: str, max_tokens: int = 16000, effort: str = "medium") -> str:
+        """One Claude call. Current models always think and reject sampling params
+        (temperature/top_p), so diversity comes from the prompts and depth from
+        `effort`. Returns "" on a refusal so the GA falls back to its
+        deterministic operators instead of crashing."""
+        kwargs = dict(
             model=self.model,
             max_tokens=max_tokens,
-            temperature=temperature,
+            output_config={"effort": effort},
             system=prompts.SYSTEM,
             messages=[{"role": "user", "content": user}],
         )
+        if settings.anthropic_base_url:
+            # Third-party gateway (e.g. DGRID): plain Messages API only.
+            msg = self._client.messages.create(**kwargs)
+        else:
+            # Direct Anthropic API: if a safety classifier declines, re-run on a
+            # fallback model inside the same call rather than losing the operator.
+            msg = self._client.beta.messages.create(
+                betas=["server-side-fallback-2026-07-01"], fallbacks="default", **kwargs
+            )
+        if msg.stop_reason == "refusal":
+            return ""
         return "".join(block.text for block in msg.content if block.type == "text")
 
     def _parse_one(self, text: str) -> StrategySpec | None:
@@ -118,7 +133,8 @@ class StrategyGenerator:
     def generate_population(self, context: str, n: int, universe: list[str]) -> list[StrategySpec]:
         if not self.enabled:
             return []
-        text = self._call(prompts.population_prompt(context, n, universe), max_tokens=8000)
+        # Seeding a diverse population is the hardest creative step: think harder.
+        text = self._call(prompts.population_prompt(context, n, universe), max_tokens=32000, effort="high")
         raw = _extract_json(text)
         items = raw if isinstance(raw, list) else [raw]
         out: list[StrategySpec] = []
@@ -134,11 +150,11 @@ class StrategyGenerator:
     def claude_mutate(self, spec: StrategySpec, metrics: Metrics, context: str) -> StrategySpec | None:
         if not self.enabled:
             return None
-        text = self._call(prompts.mutate_prompt(spec, metrics, context), temperature=0.8)
+        text = self._call(prompts.mutate_prompt(spec, metrics, context))
         return self._parse_one(text)
 
     def claude_crossover(self, a: StrategySpec, b: StrategySpec, context: str) -> StrategySpec | None:
         if not self.enabled:
             return None
-        text = self._call(prompts.crossover_prompt(a, b, context), temperature=0.8)
+        text = self._call(prompts.crossover_prompt(a, b, context))
         return self._parse_one(text)

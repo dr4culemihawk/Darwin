@@ -34,7 +34,7 @@ live touches — both read keys server-side only (never shipped to the browser):
 - **`POST /api/evolve`** — the "Evolve live" button. Runs Claude as the GA's real
   mutate operator on the locked champion and returns a fresh, validated strategy spec.
   Honors `ANTHROPIC_API_KEY`, optional `ANTHROPIC_BASE_URL` (e.g. the DGRID gateway),
-  and `DARWIN_MODEL` (defaults to `claude-opus-4-8`).
+  and `DARWIN_MODEL` (defaults to `claude-opus-5-5`).
 - **`GET /api/sentiment`** — the live Fear & Greed badge. Server-side CMC fetch via
   `CMC_PRO_API_KEY`.
 

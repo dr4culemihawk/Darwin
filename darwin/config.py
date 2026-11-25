@@ -22,7 +22,7 @@ class Settings:
     anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
     # Optional custom endpoint for an Anthropic-compatible gateway (e.g. DGRID).
     anthropic_base_url: str = os.getenv("ANTHROPIC_BASE_URL", "")
-    model: str = os.getenv("DARWIN_MODEL", "claude-sonnet-4-6")
+    model: str = os.getenv("DARWIN_MODEL", "claude-opus-5-5")
     cmc_api_key: str = os.getenv("CMC_PRO_API_KEY", "")
     bsc_private_key: str = os.getenv("BSC_PRIVATE_KEY", "")
     bsc_rpc_url: str = os.getenv("BSC_RPC_URL", "https://data-seed-prebsc-1-s1.bnbchain.org:8545")

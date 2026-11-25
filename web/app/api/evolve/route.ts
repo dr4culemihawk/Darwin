@@ -8,8 +8,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Mirror the offline engine: model + optional Anthropic-compatible gateway base URL.
-const MODEL = process.env.DARWIN_MODEL || "claude-opus-4-8";
+const MODEL = process.env.DARWIN_MODEL || "claude-opus-5-5";
 const BASE_URL = process.env.ANTHROPIC_BASE_URL || undefined;
+// Server-side refusal fallbacks are a first-party API feature, only on these models.
+const SUPPORTS_FALLBACK = !BASE_URL && /^claude-(opus-5|fable-5|sonnet-5-5)/.test(MODEL);
 
 // Best-effort guard so a public endpoint can't be hammered into burning your key.
 // (Serverless is multi-instance, so this is a soft limit per warm instance.)
@@ -46,17 +48,35 @@ export async function POST(req: Request) {
     const client = new Anthropic({ apiKey: key, baseURL: BASE_URL });
     const prompt = mutatePrompt(data.champion, data.metrics, data.fearGreed.value);
 
-    // No extended thinking → fast, snappy demo response. Bounded output.
-    const msg = await client.messages.create({
+    // Current models always think. Low effort keeps the live demo snappy; the
+    // token cap leaves room for thinking plus the JSON spec.
+    const params = {
       model: MODEL,
-      max_tokens: 1500,
+      max_tokens: 8000,
+      output_config: { effort: "low" as const },
       system: SYSTEM,
-      messages: [{ role: "user", content: prompt }],
-    });
+      messages: [{ role: "user" as const, content: prompt }],
+    };
+    const msg = SUPPORTS_FALLBACK
+      ? await client.beta.messages.create({
+          ...params,
+          betas: ["server-side-fallback-2026-06-01"],
+          fallbacks: [{ model: "claude-opus-4-8" }],
+        })
+      : await client.messages.create(params);
+
+    if (msg.stop_reason === "refusal") {
+      return NextResponse.json({ error: "The model declined this request. Try again." }, { status: 502 });
+    }
+    if (msg.stop_reason === "max_tokens") {
+      return NextResponse.json(
+        { error: "The model ran out of output room before finishing the spec. Try again." },
+        { status: 502 },
+      );
+    }
 
     const text = msg.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
+      .flatMap((b) => (b.type === "text" ? [b.text] : []))
       .join("");
 
     const spec = validateSpec(extractJson(text));
