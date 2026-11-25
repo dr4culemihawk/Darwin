@@ -105,6 +105,7 @@ class CMCClient:
                 "interval": interval,
                 "convert": convert,
             },
+            cache_ttl=6 * 3600,  # daily data: refresh twice a day (was cached forever)
         )
         data = payload["data"]
         # v2 keyed-by-symbol may return a list; normalize to the first match.

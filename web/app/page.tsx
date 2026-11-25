@@ -12,11 +12,14 @@ import { SponsorStrip } from "@/components/SponsorStrip";
 import { OOSComparison } from "@/components/OOSComparison";
 import { LiveEvolve } from "@/components/LiveEvolve";
 import { LiveSentimentBadge } from "@/components/LiveSentimentBadge";
+import { RegimeRadar } from "@/components/RegimeRadar";
+import { TodaySignal } from "@/components/TodaySignal";
+import { RwaPanel } from "@/components/RwaPanel";
 import { Reveal } from "@/components/ui/Reveal";
 import { data } from "@/lib/data";
 
 export default function Page() {
-  const { champion, metrics, equity, oos, history, fearGreed, identity, meta } = data;
+  const { champion, metrics, equity, oos, history, fearGreed, identity, meta, regime, rwa, todaySignal } = data;
   const live = meta.dataSource.toLowerCase().includes("live");
 
   return (
@@ -92,6 +95,26 @@ export default function Page() {
         </div>
       </Section>
 
+      {regime && (
+        <Section
+          id="regime"
+          eyebrow="New for Round 2 · CMC global metrics"
+          title="The regime the strategy trades in"
+          intro="BTC dominance and its 30-day trend, total and altcoin market cap, the CMC100 index, and tokenized gold as the safe haven — the same cross-market signals the strategies can gate on. Below the radar, the champion's own rules are evaluated on the latest close, with every condition shown."
+        >
+          <Reveal>
+            <RegimeRadar regime={regime} />
+          </Reveal>
+          {todaySignal && (
+            <div className="mt-5">
+              <Reveal delay={0.1}>
+                <TodaySignal signal={todaySignal} />
+              </Reveal>
+            </div>
+          )}
+        </Section>
+      )}
+
       <Section
         id="sentiment"
         eyebrow="Live market signal"
@@ -105,6 +128,19 @@ export default function Page() {
         </div>
         <FearGreedGauge fg={fearGreed} />
       </Section>
+
+      {rwa && (
+        <Section
+          id="rwa"
+          eyebrow="New for Round 2 · CMC Real-World Assets"
+          title="Risk appetite, measured in tokenized gold"
+          intro="CoinMarketCap's RWA endpoints turn the oldest safe haven into an on-chain number: who issues tokenized gold, how concentrated it is, and which RWAs are absorbing real volume right now."
+        >
+          <Reveal>
+            <RwaPanel rwa={rwa} />
+          </Reveal>
+        </Section>
+      )}
 
       <Section
         id="onchain"

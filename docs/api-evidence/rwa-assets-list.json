@@ -1,0 +1,78 @@
+{
+  "capturedAt": "2026-11-25T10:08:56Z",
+  "endpoint": "/v5/real-world-assets/assets/list",
+  "why": "RWA screener by tokenized volume (equities, ETFs, commodities).",
+  "response": [
+    {
+      "name": "Gold",
+      "symbol": "GOLD",
+      "slug": "gold",
+      "quotes": [
+        {
+          "symbol": "USD",
+          "crypto_id": 2781,
+          "average_tokenized_price": 3522.6232827092354,
+          "tokenized_market_cap": 4319476006.860394,
+          "tokenized_volume_24h": 253656718.02578017,
+          "last_updated": "2026-11-25T10:08:04.000Z"
+        }
+      ],
+      "rwa_id": 1,
+      "asset_type": "commodity",
+      "rwa_rank": 1,
+      "has_tokens": true,
+      "average_tokenized_price": 3522.6232827092354,
+      "tokenized_market_cap": 4319476006.860394,
+      "tokenized_volume_24h": 253656718.02578017,
+      "last_updated": "2026-11-25T10:08:11.000Z"
+    },
+    {
+      "name": "Nvidia Corp",
+      "symbol": "NVDA",
+      "slug": "nvidia",
+      "quotes": [
+        {
+          "symbol": "USD",
+          "crypto_id": 2781,
+          "average_tokenized_price": 147.3390470419235,
+          "tokenized_market_cap": 382270314.7413718,
+          "tokenized_volume_24h": 252776004.46217117,
+          "last_updated": "2026-11-25T10:08:04.000Z"
+        }
+      ],
+      "rwa_id": 2,
+      "asset_type": "stock",
+      "rwa_rank": 4,
+      "has_tokens": true,
+      "average_tokenized_price": 147.3390470419235,
+      "tokenized_market_cap": 382270314.7413718,
+      "tokenized_volume_24h": 252776004.46217117,
+      "last_updated": "2026-11-25T10:08:11.000Z"
+    },
+    {
+      "name": "Direxion Daily Semiconductor Bull 3X ETF",
+      "symbol": "SOXL",
+      "slug": "direxion-daily-semiconductor-bull-3x-etf",
+      "quotes": [
+        {
+          "symbol": "USD",
+          "crypto_id": 2781,
+          "average_tokenized_price": 28.33070310874235,
+          "tokenized_market_cap": 96770416.78965989,
+          "tokenized_volume_24h": 159694147.10916716,
+          "last_updated": "2026-11-25T10:08:04.000Z"
+        }
+      ],
+      "rwa_id": 7750,
+      "asset_type": "etf",
+      "rwa_rank": 5294,
+      "has_tokens": true,
+      "average_tokenized_price": 28.33070310874235,
+      "tokenized_market_cap": 96770416.78965989,
+      "tokenized_volume_24h": 159694147.10916716,
+      "last_updated": "2026-11-25T10:08:11.000Z"
+    },
+    "\u2026 7 more"
+  ],
+  "error": null
+}

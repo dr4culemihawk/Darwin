@@ -64,6 +64,21 @@ def synthetic_ohlcv(symbol: str, n: int = 365, timeframe: str = "1d") -> pd.Data
 LAST_PROVENANCE: dict[str, str] = {}
 
 SOURCES = ("auto", "cmc_ohlcv", "cmc_quotes", "binance", "synthetic")
+# A daily-candle source that ends more than this many days ago is stale: an old
+# cache entry (or a dead feed) must never masquerade as "today's market".
+MAX_STALENESS_DAYS = 3
+# Why a source was skipped on the last load — surfaced for transparency.
+LAST_NOTES: dict[str, str] = {}
+
+
+def _is_stale(df: pd.DataFrame) -> bool:
+    if df is None or df.empty:
+        return True
+    last = pd.Timestamp(df.index.max())
+    if last.tzinfo is None:
+        last = last.tz_localize("UTC")
+    return last < pd.Timestamp.utcnow() - pd.Timedelta(days=MAX_STALENESS_DAYS)
+
 
 
 def load_market_data(
@@ -118,6 +133,7 @@ def load_market_data(
     }[source]
 
     out: dict[str, pd.DataFrame] = {}
+    LAST_NOTES.clear()
     for s in symbols:
         df, used = None, "synthetic"
         for name, fn in chain:
@@ -125,7 +141,15 @@ def load_market_data(
                 continue
             try:
                 got = fn(s)
-            except Exception:
+            except Exception as e:                       # noqa: BLE001 - try the next source
+                LAST_NOTES[s] = f"{name} failed: {type(e).__name__}"
+                got = None
+            if got is not None and not got.empty and _is_stale(got):
+                # An old cache entry must not pass as live data — skip it loudly.
+                LAST_NOTES[s] = (
+                    f"{name} skipped: last bar {pd.Timestamp(got.index.max()).date()} "
+                    f"is older than {MAX_STALENESS_DAYS}d"
+                )
                 got = None
             if got is not None and not got.empty:
                 df, used = got, name
@@ -211,26 +235,19 @@ def load_cmc_regime_signals() -> dict[str, pd.Series]:
         cmc = CMCClient()
     except CMCError:
         return {}
-    out: dict[str, pd.Series] = {}
-    gm = pd.DataFrame()
+    # Lazy import: darwin.regime imports this module for its synthetic fallback.
+    from .regime import regime_series
+
+    gm, gold = pd.DataFrame(), pd.DataFrame()
     try:
         gm = cmc.global_metrics_historical()
-        if not gm.empty:
-            dom = gm["btc_dominance"].astype(float)
-            out["btc_dom"] = dom.rename("btc_dom")
-            out["dom_trend"] = dom.diff(30).rename("dom_trend")
     except CMCError:
         pass
     try:
         gold = cmc.rwa_quotes_historical("GOLD")
-        if not gold.empty and not gm.empty:
-            crypto_ret = gm["total_market_cap"].astype(float).pct_change(30) * 100.0
-            gold_ret = gold["price"].astype(float).pct_change(30) * 100.0
-            rs = (crypto_ret - gold_ret.reindex(crypto_ret.index, method="ffill")).dropna()
-            out["gold_rs"] = rs.rename("gold_rs")
     except CMCError:
         pass
-    return out
+    return regime_series(gm, gold)
 
 
 def synthetic_regime_signals(n: int = 500, timeframe: str = "1d") -> dict[str, pd.Series]:

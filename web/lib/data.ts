@@ -80,8 +80,124 @@ export interface Meta {
   bars: number;
   generations: number;
   oosStart?: string;
+  provenance?: {
+    symbols: Record<string, string>;
+    notes: Record<string, string>;
+    regime: Record<string, string>;
+  };
   sponsors: { cmc: string; bnb: string; twak: string };
 }
+
+/* ---- New for Build with CMC Round 2 ---- */
+
+export interface RegimeComponent {
+  name: string;
+  value: number | null;
+  reading: string;
+  endpoint: string;
+  format: "num" | "pct" | "pp" | "usd";
+  digits: number;
+  source: string;
+}
+
+export interface RegimeHistoryPoint {
+  date: string;
+  btcDominance: number | null;
+  goldRs: number | null;
+}
+
+export interface RegimeMetricSet {
+  btcDominance: number | null;
+  domChange30d: number | null;
+  ethDominance: number | null;
+  totalMarketCap: number | null;
+  marketCapChange30d: number | null;
+  cmc100: number | null;
+  cmc100Change24h: number | null;
+  goldPrice: number | null;
+  goldChange30d: number | null;
+  goldRs: number | null;
+  goldMarketCap?: number | null;
+  goldVolume24h?: number | null;
+}
+
+export interface Regime {
+  asOf: string | null;
+  source: string;
+  label: string;
+  tone: "risk-on" | "risk-off" | "neutral";
+  note: string;
+  metrics: RegimeMetricSet;
+  history: RegimeHistoryPoint[];
+  components: RegimeComponent[];
+  provenance: Record<string, string>;
+}
+
+export interface RwaIssuer {
+  symbol: string;
+  name: string;
+  issuer: string;
+  price: number | null;
+  marketCap: number | null;
+  volume24h: number | null;
+  share: number | null;
+}
+
+export interface RwaLeaderboardRow {
+  name: string;
+  symbol: string;
+  assetType: string;
+  marketCap: number | null;
+  volume24h: number | null;
+  price: number | null;
+}
+
+export interface Rwa {
+  source: string;
+  asOf: string;
+  asset: {
+    symbol: string;
+    name: string;
+    assetType: string;
+    price: number | null;
+    marketCap: number | null;
+    volume24h: number | null;
+    change30d: number | null;
+  };
+  issuers: RwaIssuer[];
+  concentration: number | null;
+  leaderboard: RwaLeaderboardRow[];
+}
+
+export interface SignalLeaf {
+  text: string;
+  left: string;
+  op: string;
+  right: string;
+  leftValue: number | null;
+  rightValue: number | null;
+  result: boolean | null;
+}
+
+export interface SymbolSignal {
+  symbol: string;
+  action: "enter" | "exit" | "flat" | "unknown" | "no_data";
+  reason?: string;
+  asOf: string | null;
+  lastClose?: number;
+  entry: SignalLeaf[];
+  exit: SignalLeaf[];
+}
+
+export interface TodaySignal {
+  champion: string;
+  fingerprint: string;
+  asOf: string | null;
+  signalSources: string[];
+  actions: SymbolSignal[];
+  summary: string;
+}
+
 
 export interface OOS {
   splitDate: string;
@@ -98,6 +214,10 @@ export interface DarwinData {
   fearGreed: FearGreed;
   identity: Identity;
   meta: Meta;
+  /* New for Round 2 — optional so an older data file still renders. */
+  regime?: Regime;
+  rwa?: Rwa;
+  todaySignal?: TodaySignal;
 }
 
 export const data = darwin as DarwinData;

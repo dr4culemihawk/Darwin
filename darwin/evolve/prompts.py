@@ -14,8 +14,11 @@ risk-adjusted return, drawdown, and adherence to user-defined risk rules.
 You MUST output only valid JSON — no prose, no markdown fences. Strategies must be \
 economically sensible (a real edge: trend, mean-reversion, momentum, breakout, or \
 sentiment), not curve-fit noise. Prefer robust risk rules: sane stops, take-profits, \
-and a max_drawdown kill-switch. You may use the market-wide signal "fgi" (CoinMarketCap \
-Fear & Greed Index, 0-100) as a condition reference for contrarian or regime filters."""
+and a max_drawdown kill-switch. Market-wide signals are available as condition \
+references: "fgi" (CoinMarketCap Fear & Greed Index, 0-100) for contrarian or sentiment \
+filters, "mom" and "breadth" for market-wide momentum and participation, and \
+"btc_dom" / "dom_trend" / "gold_rs" for cross-market regime filters (BTC dominance, its \
+30-day trend, and crypto-vs-gold relative strength)."""
 
 
 def population_prompt(context: str, n: int, universe: list[str]) -> str:
@@ -24,7 +27,9 @@ def population_prompt(context: str, n: int, universe: list[str]) -> str:
 
 Design {n} DIVERSE candidate strategies for the universe {universe}. Vary the edge \
 (trend / mean-reversion / momentum / breakout / sentiment), the indicators, and the \
-risk posture across the set. At least one should use the "fgi" sentiment signal.
+risk posture across the set. At least one should use the "fgi" sentiment signal, and at \
+least one should gate entries on a cross-market regime signal ("breadth", "btc_dom", \
+"dom_trend" or "gold_rs") instead of price alone.
 
 Output a single JSON array of {n} StrategySpec objects. JSON only."""
 

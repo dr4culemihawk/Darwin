@@ -42,6 +42,30 @@ python -m darwin.cli backtest --spec strategies/sample-champion.json
 Open `strategies/sample-champion.json` to show the readable, backtestable spec —
 this is the **Track 2 deliverable**.
 
+## 3.5 The Round 2 surface — regime radar, today's signal, tokenized gold
+
+```bash
+python -m darwin.cli regime --rwa
+```
+
+Three things to point at on screen:
+- **Regime Radar**: BTC dominance and its 30-day trend, total market cap, the **CMC100**
+  index, tokenized gold and **crypto-vs-gold** — each row labelled with the CMC endpoint it
+  came from, and a plain-language risk label derived from two documented axes.
+- **Today's champion signal**: the champion's *own* entry/exit rules evaluated on the latest
+  closed bar, per symbol — **ENTER / EXIT / FLAT at the next open** — with every condition's
+  operands and truth value. This is the same `eval_condition` the backtester runs, so it
+  cannot drift from a backtest.
+- **Tokenized gold issuers**: XAUt vs PAXG vs … with market-cap share, plus the RWA
+  leaderboard by 24h tokenized volume.
+
+Then open the dashboard (`cd web && npm run dev`) to show the same three panels rendered,
+plus the live Fear & Greed badge and the "Evolve live" button.
+
+Also worth showing, because it is the point of the project:
+`docs/api-evidence/` (9 real captured CMC responses) and `docs/CMC_API_FEEDBACK.md`
+(what building against the API actually felt like).
+
 ## 4. The sponsor integrations
 
 ```bash

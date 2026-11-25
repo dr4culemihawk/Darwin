@@ -1,0 +1,30 @@
+{
+  "capturedAt": "2026-11-25T10:08:56Z",
+  "endpoint": "/v5/real-world-assets/quotes/historical",
+  "why": "Daily tokenized-gold price \u2014 the safe-haven leg of the gold_rs regime signal.",
+  "response": {
+    "rows": 365,
+    "first": "2025-11-26 00:00:00+00:00",
+    "last": "2026-11-25 00:00:00+00:00",
+    "columns": [
+      "price",
+      "market_cap",
+      "volume_24h"
+    ],
+    "tail": [
+      {
+        "time": "2026-11-24 00:00:00+00:00",
+        "price": 3615.9314,
+        "market_cap": 4427003434.2832,
+        "volume_24h": 436753946.602
+      },
+      {
+        "time": "2026-11-25 00:00:00+00:00",
+        "price": 3540.0066,
+        "market_cap": 4340899637.0403,
+        "volume_24h": 285910521.1025
+      }
+    ]
+  },
+  "error": null
+}
