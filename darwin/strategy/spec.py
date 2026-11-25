@@ -28,7 +28,10 @@ PRICE_SOURCES = {"open", "high", "low", "close", "volume"}
 # `mom` = cross-sectional market momentum (mean trailing return, %); `breadth` =
 # % of the universe trading above its 50-bar trend. mom/breadth are derived from
 # CMC OHLCV so strategies can gate on market regime, not just price + sentiment.
-SIGNAL_SOURCES = {"fgi", "mom", "breadth"}
+# Round 2 adds cross-market regime signals from CMC global metrics + RWA endpoints:
+# `btc_dom` (BTC dominance %), `dom_trend` (30d change in dominance, pp) and
+# `gold_rs` (30d crypto-market-cap return minus tokenized-gold return, %).
+SIGNAL_SOURCES = {"fgi", "mom", "breadth", "btc_dom", "dom_trend", "gold_rs"}
 OPERATORS = {">", "<", ">=", "<=", "cross_above", "cross_below"}
 COMBINATORS = {"all", "any"}
 SIZING_TYPES = {"equal_weight", "fixed_fraction"}
@@ -233,7 +236,7 @@ Rules:
 - A condition is either {"all":[...]}, {"any":[...]}, or a leaf {"left","op","right"}.
 - op in {">","<",">=","<=","cross_above","cross_below"}.
 - left/right are either an indicator id, a price source (open/high/low/close/volume), a market signal, or a number.
-- Market signals (CoinMarketCap-derived, usable in any condition): "fgi" = Fear & Greed Index (0-100), "mom" = market momentum (mean trailing % return across the universe, ~ -50..50), "breadth" = % of the universe above its 50-bar trend (0-100). Use them for regime filters (e.g. only go long when breadth > 50, avoid entries in extreme fear, trim when mom is strongly negative).
+- Market signals (CoinMarketCap-derived, usable in any condition): "fgi" = Fear & Greed Index (0-100), "mom" = market momentum (mean trailing % return across the universe, ~ -50..50), "breadth" = % of the universe above its 50-bar trend (0-100), "btc_dom" = BTC dominance (% of total crypto market cap, ~40-70), "dom_trend" = 30-day change in BTC dominance (percentage points, ~ -5..5; rising = risk-off for alts), "gold_rs" = crypto-vs-gold relative strength (30-day total-crypto-market-cap return minus tokenized-gold return, %, ~ -40..40; positive = risk-on). Use them for regime filters (e.g. only go long when breadth > 50 and gold_rs > 0, avoid alt entries when dom_trend > 1, avoid entries in extreme fear).
 - Strategies are LONG/FLAT only. Entry opens, exit (or a risk rule) closes.
 - Keep it simple and economically sensible; the backtester is strict and deterministic.
 """

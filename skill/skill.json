@@ -1,21 +1,42 @@
 {
   "name": "darwin-strategy-foundry",
-  "version": "1.0.0",
-  "title": "Darwin — Evolutionary Strategy Foundry",
-  "description": "Evolves a population of backtestable crypto trading strategies from CoinMarketCap data and returns an out-of-sample-validated champion spec. Track 2 (Strategy Skills): generates a backtestable spec, not a live agent.",
+  "version": "1.1.0",
+  "title": "Darwin \u2014 Evolutionary Strategy Foundry",
+  "description": "Evolves a population of backtestable crypto trading strategies from CoinMarketCap data and returns an out-of-sample-validated champion spec, plus a cross-market regime radar (BTC dominance, CMC100, tokenized gold) and today's actionable signal.",
   "category": "trading-strategy",
-  "tags": ["trading", "strategy", "backtest", "evolutionary", "sentiment", "risk", "BNB", "BSC"],
+  "tags": [
+    "trading",
+    "strategy",
+    "backtest",
+    "evolutionary",
+    "sentiment",
+    "regime",
+    "rwa",
+    "risk",
+    "BNB",
+    "BSC"
+  ],
   "license": "MIT",
   "author": "Darwin",
   "transport": "mcp",
   "entrypoint": {
     "type": "stdio",
     "command": "python",
-    "args": ["-m", "darwin.mcp_server"]
+    "args": [
+      "-m",
+      "darwin.mcp_server"
+    ]
   },
   "consumes": {
-    "cmc_mcp": ["quotes", "ohlcv", "fear-and-greed"],
-    "notes": "Uses CoinMarketCap OHLCV + Fear & Greed; derives market momentum and breadth regime signals."
+    "cmc_mcp": [
+      "quotes",
+      "ohlcv",
+      "fear-and-greed",
+      "global-metrics",
+      "real-world-assets",
+      "cmc100-index"
+    ],
+    "notes": "Uses CoinMarketCap OHLCV/daily quotes + Fear & Greed, plus Round-2 endpoints: global metrics (btc_dom, dom_trend), Real-World Assets (gold_rs, issuer breakdown) and the CMC100 index."
   },
   "tools": [
     {
@@ -36,14 +57,60 @@
     {
       "name": "backtest_spec",
       "description": "Backtest a StrategySpec on CMC data; deterministic, lookahead-free, fees + slippage.",
-      "inputs": { "spec_json": "string", "bars": "integer", "synthetic": "boolean" },
-      "outputs": { "metrics": "performance + risk metrics" }
+      "inputs": {
+        "spec_json": "string",
+        "bars": "integer",
+        "synthetic": "boolean"
+      },
+      "outputs": {
+        "metrics": "performance + risk metrics"
+      }
     },
     {
       "name": "spec_schema",
       "description": "Return the StrategySpec DSL guide (valid indicators, signals, conditions, risk).",
       "inputs": {},
-      "outputs": { "guide": "string" }
+      "outputs": {
+        "guide": "string"
+      }
+    },
+    {
+      "name": "market_regime",
+      "description": "Cross-market regime radar from CMC global metrics + RWA + CMC100, with a plain-language risk-on/off label.",
+      "inputs": {
+        "synthetic": "boolean"
+      },
+      "outputs": {
+        "label": "string",
+        "tone": "risk-on|risk-off|neutral",
+        "metrics": "btc dominance, 30d trend, total market cap, CMC100, tokenized gold, crypto-vs-gold",
+        "components": "per-endpoint readings with provenance"
+      }
+    },
+    {
+      "name": "rwa_snapshot",
+      "description": "Tokenized RWA snapshot: aggregate gold price/cap/volume, per-issuer breakdown (XAUt, PAXG, ...) with market-cap share, and the RWA volume leaderboard.",
+      "inputs": {
+        "symbol": "string (default GOLD)",
+        "synthetic": "boolean"
+      },
+      "outputs": {
+        "asset": "aggregate quote",
+        "issuers": "per-issuer rows with share",
+        "leaderboard": "RWA assets by 24h tokenized volume"
+      }
+    },
+    {
+      "name": "todays_signal",
+      "description": "Evaluate a spec's own entry/exit rules on the latest closed bar and return a per-symbol action (enter/exit/flat) with every condition's operands and truth value.",
+      "inputs": {
+        "spec_json": "string",
+        "synthetic": "boolean"
+      },
+      "outputs": {
+        "actions": "per-symbol action + rule breakdown",
+        "summary": "one-line answer"
+      }
     }
   ]
 }

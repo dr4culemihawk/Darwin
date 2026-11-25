@@ -1,0 +1,11 @@
+{
+  "capturedAt": "2026-11-25T10:08:56Z",
+  "endpoint": "/v3/fear-and-greed/latest",
+  "why": "CMC's proprietary sentiment index \u2014 the fgi signal.",
+  "response": {
+    "value": 8,
+    "update_time": "2026-11-25T09:53:10.023Z",
+    "value_classification": "Extreme fear"
+  },
+  "error": null
+}

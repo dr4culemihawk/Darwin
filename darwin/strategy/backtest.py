@@ -140,6 +140,28 @@ def fitness_score(m: Metrics) -> float:
 # ---------------------------------------------------------------------------
 
 
+def _as_utc(ix: pd.DatetimeIndex) -> pd.DatetimeIndex:
+    ix = pd.DatetimeIndex(ix)
+    return ix.tz_localize("UTC") if ix.tz is None else ix.tz_convert("UTC")
+
+
+def align_signal(series: pd.Series, index: pd.DatetimeIndex) -> pd.Series:
+    """Align a market-wide signal to a bar index, lookahead-free.
+
+    Each bar gets the most recent signal value published AT OR BEFORE the bar's
+    timestamp (an as-of join). An exact-timestamp reindex is not enough: CMC
+    Fear & Greed / global metrics are stamped 00:00 UTC while OHLCV candles are
+    stamped at their 23:59:59.999 close, so an exact reindex matches nothing and
+    silently turns every signal into NaN (= every signal condition False).
+    """
+    s = series.copy()
+    s.index = _as_utc(s.index)
+    s = s[~s.index.duplicated(keep="last")].sort_index()
+    out = s.reindex(_as_utc(index), method="ffill")
+    out.index = index
+    return out
+
+
 def run_backtest(
     spec: StrategySpec,
     data: dict[str, pd.DataFrame],
@@ -188,7 +210,7 @@ def run_backtest(
             frame[col] = ind[col]
         if signals:
             for name, series in signals.items():
-                frame[name] = series.reindex(df.index).ffill()
+                frame[name] = align_signal(series, df.index)
         es = eval_condition(spec.entry, frame).reindex(timeline).fillna(False)
         xs = eval_condition(spec.exit, frame).reindex(timeline).fillna(False)
         o = df["open"].reindex(timeline)

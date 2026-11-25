@@ -1,0 +1,36 @@
+{
+  "capturedAt": "2026-11-25T10:08:56Z",
+  "endpoint": "/v1/global-metrics/quotes/historical",
+  "why": "Daily dominance + market-cap history behind the btcz_dom and dom_trend signals.",
+  "response": {
+    "rows": 364,
+    "first": "2025-11-27 00:00:00+00:00",
+    "last": "2026-11-25 00:00:00+00:00",
+    "columns": [
+      "btc_dominance",
+      "eth_dominance",
+      "total_market_cap",
+      "altcoin_market_cap",
+      "total_volume_24h"
+    ],
+    "tail": [
+      {
+        "time": "2026-11-24 00:00:00+00:00",
+        "btc_dominance": 58.8459,
+        "eth_dominance": 9.9832,
+        "total_market_cap": 2092365020090.91,
+        "altcoin_market_cap": 861093530347.71,
+        "total_volume_24h": 98716771505.77
+      },
+      {
+        "time": "2026-11-25 00:00:00+00:00",
+        "btc_dominance": 58.6146,
+        "eth_dominance": 10.0023,
+        "total_market_cap": 2050514386555.06,
+        "altcoin_market_cap": 848613281492.6,
+        "total_volume_24h": 73649771910.73
+      }
+    ]
+  },
+  "error": null
+}

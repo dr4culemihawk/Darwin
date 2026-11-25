@@ -20,6 +20,8 @@ from .config import settings
 from .data_source import derive_market_signals, load_market_data, load_signals
 from .evolve.engine import EvolutionConfig, Evolver
 from .evolve.generate import StrategyGenerator, market_context
+from .regime import champion_signal, regime_snapshot
+from .regime import rwa_snapshot as _rwa_snapshot
 from .strategy.backtest import run_backtest
 from .strategy.spec import SPEC_GUIDE, StrategySpec
 from .validation import DEFAULT_SPLITS, evaluate_oos, select_by_validation, train_split
@@ -103,6 +105,49 @@ def spec_schema() -> str:
     """Return the Darwin StrategySpec DSL guide — the exact JSON shape a valid,
     backtestable strategy must follow (indicators, signals, conditions, risk)."""
     return SPEC_GUIDE
+
+
+@mcp.tool()
+def market_regime(synthetic: bool = False) -> dict:
+    """Cross-market regime radar built from CoinMarketCap global metrics + RWA.
+
+    NEW for Round 2. Returns BTC dominance and its 30-day trend, ETH dominance,
+    total/altcoin market cap, the CMC100 index, and tokenized gold as the safe
+    haven — with a plain-language regime label (risk-on / risk-off / neutral) and
+    the endpoint each number came from. These are the same series strategies can
+    gate on as spec signals: btc_dom, dom_trend, gold_rs.
+    """
+    return regime_snapshot(force_synthetic=synthetic)
+
+
+@mcp.tool()
+def rwa_snapshot(symbol: str = "GOLD", synthetic: bool = False) -> dict:
+    """Tokenized real-world-asset snapshot from CoinMarketCap's RWA endpoints.
+
+    NEW for Round 2. Defaults to GOLD: aggregate tokenized price/cap/volume plus
+    the per-issuer breakdown (XAUt, PAXG, ...) with market-cap share, and the RWA
+    leaderboard by 24h tokenized volume. Use it to answer "is capital hiding in
+    tokenized gold, and who issues it?"
+    """
+    return _rwa_snapshot(symbol=symbol, force_synthetic=synthetic)
+
+
+@mcp.tool()
+def todays_signal(spec_json: str, synthetic: bool = False) -> dict:
+    """What a Darwin strategy says to do at the next open, right now.
+
+    NEW for Round 2. Evaluates the spec's own entry/exit condition tree on the
+    latest closed bar (exactly as the backtester would) and returns a per-symbol
+    action — enter / exit / flat — with every leaf condition's operands and
+    truth value, so the answer is auditable rather than a black box.
+    """
+    spec = StrategySpec.from_json(spec_json)
+    spec.validate()
+    syn = synthetic or not settings.has_cmc
+    data = load_market_data(spec.universe, count=400, timeframe=spec.timeframe, force_synthetic=syn)
+    signals = load_signals(count=400, timeframe=spec.timeframe, force_synthetic=syn)
+    signals.update(derive_market_signals(data))
+    return champion_signal(spec, data, signals)
 
 
 def main() -> None:

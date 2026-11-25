@@ -1,0 +1,27 @@
+{
+  "capturedAt": "2026-11-25T10:08:56Z",
+  "endpoint": "/v1/key/info",
+  "why": "Plan + credit usage, proving which tier the evidence was captured on.",
+  "response": {
+    "plan": {
+      "credit_limit_monthly": 15000,
+      "credit_limit_monthly_reset": "In 5 days, 13 hours, 50 minutes",
+      "credit_limit_monthly_reset_timestamp": "2026-12-01T00:00:00.000Z",
+      "rate_limit_minute": 50
+    },
+    "usage": {
+      "current_minute": {
+        "requests_made": 1,
+        "requests_left": 49
+      },
+      "current_day": {
+        "credits_used": 152
+      },
+      "current_month": {
+        "credits_used": 281,
+        "credits_left": 14719
+      }
+    }
+  },
+  "error": null
+}

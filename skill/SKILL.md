@@ -6,9 +6,10 @@ description: >-
   deterministic backtester (risk-adjusted return, drawdown, rule adherence).
   Use when a user wants a trading strategy, a backtest, or a tunable strategy
   spec for BSC / crypto markets — blending indicators (SMA, EMA, RSI, MACD, ROC)
-  with the CMC Fear & Greed sentiment signal into entry/exit rules.
+  with CMC's Fear & Greed sentiment and cross-market regime signals (BTC
+  dominance, Crypto-vs-gold, market breadth) into entry/exit rules.
 license: MIT
-allowed-tools: [evolve_strategy, backtest_spec, spec_schema]
+allowed-tools: [evolve_strategy, backtest_spec, spec_schema, market_regime, rwa_snapshot, todays_signal]
 ---
 
 # Darwin — Strategy Foundry Skill
@@ -25,7 +26,7 @@ Hub `find_skill` router) — see `skill.json` and `mcp_config.json`.
 
 ```bash
 pip install "mcp>=1.2.0"        # the optional `skill` extra
-python -m darwin.mcp_server      # exposes evolve_strategy / backtest_spec / spec_schema
+python -m darwin.mcp_server      # exposes the six tools below
 ```
 
 Tools:
@@ -33,6 +34,13 @@ Tools:
   **held-out test** scoring. Returns the spec + in-sample vs out-of-sample metrics.
 - **`backtest_spec`** — backtest any StrategySpec (deterministic, lookahead-free).
 - **`spec_schema`** — return the StrategySpec DSL guide.
+- **`market_regime`** *(new, Round 2)* — cross-market regime radar from CMC global
+  metrics + RWA + the CMC100 index, with a plain-language risk-on/off label.
+- **`rwa_snapshot`** *(new, Round 2)* — tokenized gold aggregate plus the per-issuer
+  breakdown (XAUt, PAXG, ...) with market-cap share, and the RWA volume leaderboard.
+- **`todays_signal`** *(new, Round 2)* — evaluate a spec's own rules on the latest
+  closed bar: per-symbol enter / exit / flat, with every condition's operands and
+  truth value.
 
 ## When to use this skill
 
@@ -92,7 +100,11 @@ the single source of truth for what it means.
 ### Vocabulary
 - **indicators** — `SMA`, `EMA`, `RSI`, `ROC`, `ATR`, `MACD`, `MACD_SIGNAL`, `MACD_HIST`, `PRICE`.
   MACD types use `fast`/`slow`/`signal`; others use `period`.
-- **signals** — `fgi` = CoinMarketCap **Fear & Greed Index** (0–100), usable in any condition.
+- **signals** (CoinMarketCap-derived, usable in any condition) — `fgi` = **Fear & Greed
+  Index** (0–100); `mom` = cross-sectional market momentum; `breadth` = % of the universe
+  above its 50-bar trend; `btc_dom` = BTC dominance (%); `dom_trend` = 30-day change in
+  BTC dominance (pp, rising = alt risk-off); `gold_rs` = crypto-vs-tokenized-gold relative
+  strength (30-day %, positive = risk-on).
 - **price sources** — `open`, `high`, `low`, `close`, `volume`.
 - **operators** — `>`, `<`, `>=`, `<=`, `cross_above`, `cross_below`.
 - **conditions** — `{"all": [...]}`, `{"any": [...]}`, or a leaf `{"left", "op", "right"}`.
@@ -119,6 +131,9 @@ win rate, trades, exposure, **rule adherence**.
   kill-switch.
 - Use `fgi` for contrarian or regime filters (e.g. avoid entries in Extreme Fear,
   trim in Extreme Greed).
+- Use `btc_dom` / `dom_trend` / `gold_rs` for cross-market regime filters: e.g. skip
+  alt entries while `dom_trend > 1` (capital concentrating in BTC), or demand
+  `gold_rs > 0` (crypto beating gold) before taking risk.
 - Cross `MACD` over `MACD_SIGNAL` for classic momentum entries; confirm with `rsi`.
 
 ## References

@@ -24,7 +24,13 @@ from .validation import DEFAULT_SPLITS, evaluate_oos, select_by_validation, trai
 
 
 def _print(msg: str) -> None:
-    print(msg, flush=True)
+    """Print, degrading gracefully on Windows consoles (cp1252) that can't encode
+    characters like the em dash or arrow used in the report/radar strings."""
+    try:
+        print(msg, flush=True)
+    except UnicodeEncodeError:
+        enc = sys.stdout.encoding or "ascii"
+        print(msg.encode(enc, "replace").decode(enc), flush=True)
 
 
 def _fg_class(v: float) -> str:
@@ -130,6 +136,72 @@ def cmd_register(args: argparse.Namespace) -> int:
     return register_agent(name=args.name, description=args.description)
 
 
+def cmd_regime(args: argparse.Namespace) -> int:
+    import json as _json
+
+    from .regime import champion_signal, regime_snapshot, rwa_snapshot
+
+    snap = regime_snapshot(force_synthetic=args.synthetic)
+    signal = None
+    if args.spec:
+        spec = StrategySpec.from_json(open(args.spec, encoding="utf-8").read())
+        force_syn = args.synthetic or not settings.has_cmc
+        data = load_market_data(spec.universe, count=args.bars, force_synthetic=force_syn)
+        signals = load_signals(count=args.bars, force_synthetic=force_syn)
+        signals.update(derive_market_signals(data))
+        signal = champion_signal(spec, data, signals)
+
+    if args.json:
+        payload = {"regime": snap}
+        if signal:
+            payload["signal"] = signal
+        if args.rwa:
+            payload["rwa"] = rwa_snapshot(force_synthetic=args.synthetic)
+        _print(_json.dumps(payload, indent=2))
+        return 0
+
+    m = snap["metrics"]
+    _print(f"Darwin regime radar  |  {snap['asOf']}  |  {snap['source']}")
+    _print(f"  {snap['label']}")
+    _print(f"  {snap['note']}")
+    _print("")
+    for c in snap["components"]:
+        val = c["value"]
+        if val is None:
+            shown = "n/a"
+        elif c["format"] == "usd":
+            shown = f"${val:,.0f}"
+        elif c["format"] == "pct":
+            shown = f"{val:.2f}%"
+        elif c["format"] == "pp":
+            shown = f"{val:+.2f}pp"
+        else:
+            shown = f"{val:,.{c['digits']}f}"
+        _print(f"  {c['name']:<22} {shown:>14}   {c['reading']}   [{c['endpoint']}]")
+
+    if signal:
+        _print("")
+        _print(f"Today's champion signal — {signal['champion']} [{signal['fingerprint']}]")
+        _print(f"  evaluated on the {signal['asOf']} close (orders would fire at the next open)")
+        for a in signal["actions"]:
+            _print(f"  {a['symbol']:<6} {a['action'].upper():<7} {a.get('reason', '')}")
+            for leaf in a["entry"]:
+                mark = "yes" if leaf["result"] else ("?" if leaf["result"] is None else "no ")
+                _print(f"         entry: {leaf['text']:<34} [{mark}]")
+            for leaf in a["exit"]:
+                mark = "yes" if leaf["result"] else ("?" if leaf["result"] is None else "no ")
+                _print(f"         exit : {leaf['text']:<34} [{mark}]")
+
+    if args.rwa:
+        r = rwa_snapshot(force_synthetic=args.synthetic)
+        _print("")
+        _print(f"Tokenized gold issuers  ({r['source']})")
+        for i in r["issuers"]:
+            share = f"{(i['share'] or 0) * 100:5.1f}%" if i["share"] is not None else "   n/a"
+            _print(f"  {i['symbol']:<7} {i['issuer']:<20} ${(i['marketCap'] or 0) / 1e6:8.1f}M  {share}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="darwin", description="Evolutionary trading-strategy foundry")
     sub = p.add_subparsers(dest="command", required=True)
@@ -151,6 +223,15 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--bars", type=int, default=500)
     b.add_argument("--synthetic", action="store_true")
     b.set_defaults(func=cmd_backtest)
+
+    g = sub.add_parser("regime", help="cross-market regime radar + today's champion signal")
+    g.add_argument("--spec", default="strategies/sample-champion.json",
+                   help="spec to evaluate (empty string to skip)")
+    g.add_argument("--bars", type=int, default=500)
+    g.add_argument("--rwa", action="store_true", help="also show tokenized-gold issuers")
+    g.add_argument("--json", action="store_true", help="machine-readable output")
+    g.add_argument("--synthetic", action="store_true", help="force offline data")
+    g.set_defaults(func=cmd_regime)
 
     x = sub.add_parser("execute", help="execute the champion via Trust Wallet Agent Kit")
     x.add_argument("--spec", required=True)

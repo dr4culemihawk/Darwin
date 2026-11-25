@@ -12,7 +12,14 @@ import json
 from pathlib import Path
 
 from darwin.config import RUNS_DIR, settings
-from darwin.data_source import derive_market_signals, load_market_data, load_signals
+from darwin.data_source import (
+    LAST_NOTES,
+    LAST_PROVENANCE,
+    derive_market_signals,
+    load_market_data,
+    load_signals,
+)
+from darwin.regime import champion_signal, regime_snapshot, rwa_snapshot
 from darwin.strategy.backtest import run_backtest
 from darwin.strategy.metrics import Metrics
 from darwin.strategy.spec import StrategySpec
@@ -53,9 +60,23 @@ def main() -> None:
     fp = spec.fingerprint()
 
     syn = not settings.has_cmc
-    data = load_market_data(spec.universe, count=700, force_synthetic=syn)
-    signals = load_signals(count=700, force_synthetic=syn)
+    # Round 2: pin the CMC-only daily-candle source so the dashboard never mixes
+    # in a non-CMC feed (and never serves a stale cached OHLCV response).
+    src = "synthetic" if syn else "cmc_quotes"
+    data = load_market_data(spec.universe, count=364, force_synthetic=syn, source=src)
+    signals = load_signals(count=364, force_synthetic=syn)
     signals.update(derive_market_signals(data))  # CMC-derived mom + breadth regime signals
+
+    # Round 2 additions: cross-market regime radar, tokenized-gold issuers, and
+    # what the champion's own rules say at the latest close.
+    regime = regime_snapshot(force_synthetic=syn)
+    rwa = rwa_snapshot(force_synthetic=syn)
+    today = champion_signal(spec, data, signals)
+    provenance = {
+        "symbols": dict(LAST_PROVENANCE),
+        "notes": dict(LAST_NOTES),
+        "regime": regime.get("provenance", {}),
+    }
 
     # In-sample vs out-of-sample holdout: design on the first half, forward-test on
     # the held-out second half (warmup-aware, no look-ahead).
@@ -123,14 +144,19 @@ def main() -> None:
         "history": history,
         "fearGreed": fg,
         "identity": identity,
+        # --- New for Build with CMC Round 2 ---
+        "regime": regime,
+        "rwa": rwa,
+        "todaySignal": today,
         "meta": {
-            "dataSource": "synthetic" if syn else "CoinMarketCap OHLCV (live)",
+            "dataSource": "synthetic" if syn else "CoinMarketCap daily quotes (live)",
             "universe": spec.universe,
             "bars": len(result.equity),
             "generations": len(history),
             "oosStart": str(split.date()),
+            "provenance": provenance,
             "sponsors": {
-                "cmc": "live OHLCV + Fear & Greed",
+                "cmc": "OHLCV + Fear & Greed + global metrics + RWA",
                 "bnb": "ERC-8004 identity (gasless)",
                 "twak": "HMAC auth + BSC asset resolution",
             },

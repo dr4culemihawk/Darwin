@@ -1,0 +1,30 @@
+{
+  "capturedAt": "2026-11-25T10:08:56Z",
+  "endpoint": "/v5/real-world-assets/issuers/list",
+  "why": "Issuer directory (token counts per issuer).",
+  "response": [
+    {
+      "name": "Backed Assets",
+      "website": "https://assets.backed.fi/",
+      "logo": null,
+      "issuer_id": "6878977dcbbf471de3366e85",
+      "num_tokens": 1218
+    },
+    {
+      "name": "Backpack",
+      "website": "https://backpack.exchange",
+      "logo": "https://s2.coinmarketcap.com/static/img/issuer/M7sS2GzR_400x400.png",
+      "issuer_id": "6a2d54b697c45356b1a634f4",
+      "num_tokens": 16
+    },
+    {
+      "name": "Bitget Assets",
+      "website": "https://www.bitget.com/",
+      "logo": null,
+      "issuer_id": "68a80be20135f56ec3188cdc",
+      "num_tokens": 0
+    },
+    "\u2026 7 more"
+  ],
+  "error": null
+}

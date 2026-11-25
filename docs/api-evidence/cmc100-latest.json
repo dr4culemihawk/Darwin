@@ -1,0 +1,36 @@
+{
+  "capturedAt": "2026-11-25T10:08:56Z",
+  "endpoint": "/v3/index/cmc100-latest",
+  "why": "CMC's own 100-asset index level, used in the regime radar.",
+  "response": {
+    "value": 114.93,
+    "value_24h_percentage_change": -1.76,
+    "last_update": "2026-11-25T10:05:00.000Z",
+    "next_update": "2026-11-25T10:10:00.000Z",
+    "constituents": [
+      {
+        "id": 1,
+        "name": "Bitcoin",
+        "symbol": "BTC",
+        "url": "https://coinmarketcap.com/currencies/bitcoin",
+        "weight": 68.23
+      },
+      {
+        "id": 1027,
+        "name": "Ethereum",
+        "symbol": "ETH",
+        "url": "https://coinmarketcap.com/currencies/ethereum",
+        "weight": 11.54
+      },
+      {
+        "id": 1839,
+        "name": "BNB",
+        "symbol": "BNB",
+        "url": "https://coinmarketcap.com/currencies/bnb",
+        "weight": 4.08
+      },
+      "\u2026 97 more"
+    ]
+  },
+  "error": null
+}

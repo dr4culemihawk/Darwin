@@ -11,7 +11,7 @@ const INDICATOR_TYPES = new Set([
   "SMA", "EMA", "RSI", "ATR", "ROC", "PRICE", "MACD", "MACD_SIGNAL", "MACD_HIST",
 ]);
 const PRICE_SOURCES = new Set(["open", "high", "low", "close", "volume"]);
-const SIGNAL_SOURCES = new Set(["fgi", "mom", "breadth"]);
+const SIGNAL_SOURCES = new Set(["fgi", "mom", "breadth", "btc_dom", "dom_trend", "gold_rs"]);
 const OPERATORS = new Set([">", "<", ">=", "<=", "cross_above", "cross_below"]);
 
 export const SPEC_GUIDE = `A StrategySpec is JSON with this shape:
@@ -48,8 +48,8 @@ Rules:
 - MACD/MACD_SIGNAL/MACD_HIST use fast/slow/signal (default 12/26/9), not period. Cross MACD over MACD_SIGNAL for classic signals.
 - A condition is either {"all":[...]}, {"any":[...]}, or a leaf {"left","op","right"}.
 - op in {">","<",">=","<=","cross_above","cross_below"}.
-- left/right are an indicator id, a price source (open/high/low/close/volume), the signal "fgi", or a number.
-- Market signals (CMC-derived, usable in any condition): "fgi" = Fear & Greed Index (0-100), "mom" = market momentum (mean trailing % return across the universe), "breadth" = % of the universe above its 50-bar trend (0-100). Use them for regime filters.
+- left/right are an indicator id, a price source (open/high/low/close/volume), a market signal, or a number.
+- Market signals (CoinMarketCap-derived, usable in any condition): "fgi" = Fear & Greed Index (0-100), "mom" = market momentum (mean trailing % return across the universe), "breadth" = % of the universe above its 50-bar trend (0-100), "btc_dom" = BTC dominance (% of total crypto market cap, ~40-70), "dom_trend" = 30-day change in BTC dominance (percentage points, ~ -5..5; rising = risk-off for alts), "gold_rs" = crypto-vs-gold relative strength (30-day total-crypto-market-cap return minus tokenized-gold return, %, ~ -40..40; positive = risk-on). Use them for regime filters (e.g. only go long when breadth > 50 and gold_rs > 0, avoid alt entries when dom_trend > 1, avoid entries in extreme fear).
 - Strategies are LONG/FLAT only. Entry opens, exit (or a risk rule) closes.
 - Keep it simple and economically sensible; the backtester is strict and deterministic.`;
 

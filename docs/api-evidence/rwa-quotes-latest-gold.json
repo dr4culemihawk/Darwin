@@ -1,0 +1,63 @@
+{
+  "capturedAt": "2026-11-25T10:08:56Z",
+  "endpoint": "/v5/real-world-assets/quotes/latest",
+  "why": "Tokenized gold aggregate + per-issuer tokens[] (XAUt, PAXG, ...) for the issuer panel.",
+  "response": {
+    "name": "Gold",
+    "symbol": "GOLD",
+    "slug": "gold",
+    "quotes": [
+      {
+        "symbol": "USD",
+        "crypto_id": 2781,
+        "average_tokenized_price": 3522.6232827092354,
+        "tokenized_market_cap": 4319476006.860394,
+        "tokenized_volume_24h": 253656718.02578017,
+        "last_updated": "2026-11-25T10:08:04.000Z"
+      }
+    ],
+    "rwa_id": 1,
+    "asset_type": "commodity",
+    "rwa_rank": 1,
+    "has_tokens": true,
+    "average_tokenized_price": 3522.6232827092354,
+    "tokenized_market_cap": 4319476006.860394,
+    "tokenized_volume_24h": 253656718.02578017,
+    "last_updated": "2026-11-25T10:08:11.287Z",
+    "tokens": [
+      {
+        "symbol": "PAXG",
+        "name": "PAX Gold",
+        "price": 3523.6751051403,
+        "crypto_id": 4705,
+        "issuer_id": "68904c24abae9b5b9fb35815",
+        "issuer_name": "Paxos",
+        "market_cap": 1576252832.425361,
+        "volume_24h": 96574805.41919436
+      },
+      {
+        "symbol": "XAUt",
+        "name": "Tether Gold",
+        "price": 3523.9486893133458,
+        "crypto_id": 5176,
+        "issuer_id": "68904e9cabae9b5b9fb358ac",
+        "issuer_name": "Tether Holdings",
+        "market_cap": 2640930187.973077,
+        "volume_24h": 155017593.3109102
+      },
+      {
+        "symbol": "XAUM",
+        "name": "Matrixdock Gold",
+        "price": 3524.092475227854,
+        "crypto_id": 34212,
+        "issuer_id": "68905a7babae9b5b9fb35a8d",
+        "issuer_name": "Matrixdock",
+        "market_cap": 61177940.845093355,
+        "volume_24h": 411552.1759659821
+      },
+      "\u2026 4 more"
+    ],
+    "tradfi_markets": []
+  },
+  "error": null
+}

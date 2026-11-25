@@ -62,13 +62,21 @@ export function OOSComparison({ oos }: { oos: OOS }) {
               Forward-tested out-of-sample
             </h3>
             <p className="mt-3 leading-relaxed text-zinc-400">
-              The strategy was designed on the first half of history and{" "}
-              <span className="text-emerald-soft">forward-tested on a held-out window it never saw</span>.
-              On unseen data it preserved capital with a{" "}
-              <span className="text-zinc-200">{pct(oos.outOfSample.maxDrawdown, 1)}</span> max drawdown and{" "}
-              <span className="text-zinc-200">{pctAbs(oos.outOfSample.ruleAdherence, 0)}</span> rule adherence —
-              no overtrading, no blow-up. Most &quot;AI strategy&quot; results are 100% in-sample and can&apos;t show this at all.
+              The champion is locked, then scored on a{" "}
+              <span className="text-emerald-soft">held-out window it never saw</span>. On unseen data it
+              kept a <span className="text-zinc-200">{pct(oos.outOfSample.maxDrawdown, 1)}</span> max drawdown
+              with <span className="text-zinc-200">{pctAbs(oos.outOfSample.ruleAdherence, 0)}</span> rule
+              adherence — no overtrading, no blow-up. Most &quot;AI strategy&quot; results are 100% in-sample
+              and can&apos;t show this at all.
             </p>
+            {oos.inSample.numTrades === 0 && (
+              <p className="mt-3 rounded-xl border border-white/8 bg-white/[0.02] p-3 text-xs leading-relaxed text-zinc-500">
+                The first half shows <span className="text-zinc-300">zero trades</span> — that is the
+                strategy working as designed, not a gap. Its regime filter stays flat while price is below
+                the long trend, so it simply refused to trade through a downtrend. Every entry it took came
+                after the split.
+              </p>
+            )}
           </div>
           <div className="rounded-xl border border-white/8 bg-white/[0.02] px-4 py-2.5 text-xs text-zinc-500">
             held out after <span className="font-mono text-zinc-300">{oos.splitDate}</span>
